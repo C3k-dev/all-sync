@@ -96,18 +96,20 @@ export default function RoomPage() {
     if (!state.playlist || state.currentIndex < 0 || !state.playlist[state.currentIndex]) return;
 
     const video = videoRef.current;
-    const currentVideo = state.playlist[state.currentIndex];
-
-    // ✅ Используем полный URL к серверу сокетов
-    let src = currentVideo;
-    if (!currentVideo.startsWith("http")) {
-      // Подставляем базовый URL сервера
-      src = `${process.env.NEXT_PUBLIC_SOCKET_URL}${currentVideo.startsWith("/") ? "" : "/"}${currentVideo}`;
-    }
+    let src = state.playlist[state.currentIndex];
+    if (!src.startsWith("http")) src = `${process.env.NEXT_PUBLIC_SOCKET_URL}${src.startsWith("/") ? "" : "/"}${src}`;
 
     if (video.src !== src) {
       video.src = src;
-      video.play().catch(() => {});
+      video.pause();
+      video.currentTime = state.time || 0;
+
+      const onCanPlay = () => {
+        video.currentTime = state.time || 0;
+        if (!state.paused) video.play().catch(() => {});
+        video.removeEventListener("canplay", onCanPlay);
+      };
+      video.addEventListener("canplay", onCanPlay);
     }
   }, [state.playlist, state.currentIndex]);
 
@@ -129,15 +131,14 @@ export default function RoomPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       if (!videoRef.current || !socketRef.current) return;
-      const progress = videoRef.current.duration
-        ? (videoRef.current.currentTime / videoRef.current.duration) * 100
-        : 0;
+      const video = videoRef.current;
+      if (video.readyState < 3) return;
 
       socketRef.current.emit("updateTime", {
         roomId,
-        currentTime: videoRef.current.currentTime,
-        videoProgress: progress,
-        playing: !videoRef.current.paused,
+        currentTime: video.currentTime,
+        videoProgress: video.duration ? (video.currentTime / video.duration) * 100 : 0,
+        playing: !video.paused,
       });
     }, 500);
     return () => clearInterval(interval);
@@ -169,7 +170,7 @@ export default function RoomPage() {
     socketRef.current?.emit("updateProfile", { roomId, nickname: finalNick, avatar: avatarInput });
   };
 
-  // --- Загрузка локального видео через сервер сокетов ---
+  // --- Загрузка локального видео через сервер ---
   const onUpload = async (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
