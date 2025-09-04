@@ -97,7 +97,13 @@ export default function RoomPage() {
 
     const video = videoRef.current;
     const currentVideo = state.playlist[state.currentIndex];
-    const src = currentVideo.startsWith("http") ? currentVideo : window.location.origin + currentVideo;
+
+    // ✅ Используем полный URL к серверу сокетов
+    let src = currentVideo;
+    if (!currentVideo.startsWith("http")) {
+      // Подставляем базовый URL сервера
+      src = `${process.env.NEXT_PUBLIC_SOCKET_URL}${currentVideo.startsWith("/") ? "" : "/"}${currentVideo}`;
+    }
 
     if (video.src !== src) {
       video.src = src;
@@ -163,14 +169,21 @@ export default function RoomPage() {
     socketRef.current?.emit("updateProfile", { roomId, nickname: finalNick, avatar: avatarInput });
   };
 
+  // --- Загрузка локального видео через сервер сокетов ---
   const onUpload = async (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
+
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SOCKET_URL}/upload`, {
+      method: "POST",
+      body: fd,
+    });
+
     if (!res.ok) {
       alert("Upload failed");
       return;
     }
+
     const { url } = await res.json();
     socketRef.current?.emit("addToPlaylist", { roomId, url });
   };
