@@ -51,7 +51,7 @@ function RoomHeader({ id_room }: RoomHeaderProps) {
           style={{ cursor: "pointer" }}
         >
           <p className={styles.roomHeader__wrapper__right__link}>
-            {copied ? "Ссылка скопирована" : `site.com/room/${id_room}`}
+            {copied ? "Ссылка скопирована" : `all-sync.vercel.app/room/${id_room}`}
           </p>
         </div>
       </div>
