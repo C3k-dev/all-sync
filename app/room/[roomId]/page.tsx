@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 import { useUserStore } from "@/store/userStore";
 import styles from "./room.module.scss";
 import UserCell from "@/components/cell/UserCell/UserCell";
@@ -37,13 +37,13 @@ interface ActionLog {
 }
 
 export default function RoomPage() {
-  const { roomId } = useParams<{ roomId: string }>();
-  const socketRef = useRef<any>(null);
+  const { roomId } = useParams<{ roomId: string }>() || { roomId: "" };
+  const socketRef = useRef<Socket | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const { nickname, avatar, setNickname, setAvatar } = useUserStore();
-  const [nickInput, setNickInput] = useState(nickname || "");
-  const [avatarInput, setAvatarInput] = useState(avatar || "");
+  const [nickInput, setNickInput] = useState<string>(nickname || "");
+  const [avatarInput, setAvatarInput] = useState<string>(avatar || "");
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [state, setState] = useState<RoomState>({
     playlist: [],
@@ -61,32 +61,34 @@ export default function RoomPage() {
 
   // Подключение к Socket.IO
   useEffect(() => {
-    const s = io({ path: "/api/socket" });
-    socketRef.current = s;
+    const socket: Socket = io({ path: "/api/socket" });
+    socketRef.current = socket;
 
-    s.emit("joinRoom", { roomId, nickname: nickname || "Гость", avatar });
+    socket.emit("joinRoom", { roomId, nickname: nickname || "Гость", avatar });
 
-    s.on("roomUsers", (list: Participant[]) => setParticipants(list));
-    s.on("roomState", (st: RoomState) => setState((prev) => ({ ...prev, ...st })));
-    s.on("videoState", (st: RoomState) => setState((prev) => ({ ...prev, ...st })));
-    s.on("playlistUpdate", (playlist: string[], currentIndex: number) =>
+    socket.on("roomUsers", (list: Participant[]) => setParticipants(list));
+    socket.on("roomState", (st: RoomState) => setState((prev) => ({ ...prev, ...st })));
+    socket.on("videoState", (st: RoomState) => setState((prev) => ({ ...prev, ...st })));
+    socket.on("playlistUpdate", (playlist: string[], currentIndex: number) =>
       setState((prev) => ({ ...prev, playlist, currentIndex }))
     );
-    s.on("actionLog", (entry: ActionLog) => setLogs((prev) => [entry, ...prev]));
-
-    s.on("vkDownloadProgress", ({ progress }) => setVkProgress(progress));
-    s.on("vkDownloadDone", ({ url }) => {
+    socket.on("actionLog", (entry: ActionLog) => setLogs((prev) => [entry, ...prev]));
+    socket.on("vkDownloadProgress", ({ progress }: { progress: number }) => setVkProgress(progress));
+    socket.on("vkDownloadDone", ({ url }: { url: string }) => {
       socketRef.current?.emit("addToPlaylist", { roomId, url });
       setVkInput("");
       setVkProgress(0);
     });
-    s.on("vkDownloadError", ({ error }) => {
+    socket.on("vkDownloadError", ({ error }: { error: string }) => {
       alert(error);
       setVkProgress(0);
     });
 
-    return () => s.disconnect();
-  }, [roomId]);
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [roomId, nickname, avatar]);
 
   // Установка src видео при смене плейлиста или текущего индекса
   useEffect(() => {
@@ -119,6 +121,23 @@ export default function RoomPage() {
     }
   }, [state.time, state.paused]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!videoRef.current || !socketRef.current) return;
+      const progress = videoRef.current.duration
+        ? (videoRef.current.currentTime / videoRef.current.duration) * 100
+        : 0;
+
+      socketRef.current.emit("updateTime", {
+        roomId,
+        currentTime: videoRef.current.currentTime,
+        videoProgress: progress,
+        playing: !videoRef.current.paused,
+      });
+    }, 500);
+    return () => clearInterval(interval);
+  }, [roomId]);
+
   const sendVideoAction = (action: "play" | "pause" | "seek") => {
     if (!videoRef.current) return;
     const now = videoRef.current.currentTime;
@@ -141,28 +160,7 @@ export default function RoomPage() {
     sendVideoAction("seek");
   };
   const onSeeking = () => setLocalSeeking(true);
-
-  const onEnded = () => {
-    // Удаляем текущее видео из плейлиста и автоплей следующего
-    socketRef.current?.emit("removeVideo", { roomId, index: state.currentIndex });
-  };
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!videoRef.current || !socketRef.current) return;
-      const progress = videoRef.current.duration
-        ? (videoRef.current.currentTime / videoRef.current.duration) * 100
-        : 0;
-
-      socketRef.current.emit("updateTime", {
-        roomId,
-        currentTime: videoRef.current.currentTime,
-        videoProgress: progress,
-        playing: !videoRef.current.paused,
-      });
-    }, 500);
-    return () => clearInterval(interval);
-  }, [roomId]);
+  const onEnded = () => socketRef.current?.emit("removeVideo", { roomId, index: state.currentIndex });
 
   const submitProfile = (newNick?: string) => {
     const finalNick = newNick?.trim() || nickInput || "Гость";
@@ -195,8 +193,8 @@ export default function RoomPage() {
       });
       if (!res.ok) throw new Error("Не удалось загрузить видео VK");
       setVkProgress(0);
-    } catch (e: any) {
-      alert(e.message);
+    } catch (e: unknown) {
+      alert((e as Error).message);
       setVkProgress(0);
     }
   };
@@ -287,7 +285,6 @@ export default function RoomPage() {
                   className={i === state.currentIndex ? styles.activeVideo : ""}
                 >
                   <span>{url.split("/").pop()?.substring(0, 30)}</span>
-
                   {i !== state.currentIndex && (
                     <button
                       className={styles.buttonPlayNext}
@@ -311,7 +308,7 @@ export default function RoomPage() {
                 key={log.id}
                 time={new Date(log.time).toLocaleTimeString()}
                 name={log.nickname}
-                active={log.details || ''}
+                active={log.details || ""}
               />
             ))}
           </div>

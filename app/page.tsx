@@ -4,7 +4,24 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/userStore";
 import Link from "next/link";
+import Image from "next/image";
 import { LoginButton } from "@telegram-auth/react";
+
+type TelegramUser = {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+};
+
+type RoomHistoryItem = {
+  roomId: string;
+  role: "owner" | "guest";
+  joinedAt: number;
+};
 
 export default function HomePage() {
   const router = useRouter();
@@ -65,7 +82,7 @@ export default function HomePage() {
     router.push(`/room/${joinRoomId.trim()}`);
   };
 
-  const onTelegramAuth = async (data: any) => {
+  const onTelegramAuth = async (data: TelegramUser) => {
     setTelegramUser(data);
     setNickname(data.username || data.first_name || "Гость");
     // Загружаем историю
@@ -87,7 +104,15 @@ export default function HomePage() {
         />
       ) : (
         <div className="profile-info" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 20 }}>
-          <img src={telegramUser.photo_url} alt={telegramUser.username} width={40} height={40} style={{ borderRadius: "50%" }} />
+          {telegramUser.photo_url && (
+            <Image
+              src={telegramUser.photo_url}
+              alt={telegramUser.username || telegramUser.first_name}
+              width={40}
+              height={40}
+              className="rounded-full"
+            />
+          )}
           <span>{telegramUser.username || telegramUser.first_name}</span>
         </div>
       )}
@@ -115,7 +140,7 @@ export default function HomePage() {
       <ul style={{ marginTop: 20 }}>
         {history
           .sort((a, b) => b.joinedAt - a.joinedAt)
-          .map((h) => (
+          .map((h: RoomHistoryItem) => (
             <li key={h.roomId} style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <Link href={`/room/${h.roomId}`}>{h.roomId}</Link>
               <span>({h.role})</span>
