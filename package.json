@@ -1,0 +1,35 @@
+{
+  "name": "all-sync",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@telegram-auth/react": "^1.0.4",
+    "lowdb": "^7.0.1",
+    "mongodb": "^6.19.0",
+    "next": "15.5.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-svg": "^16.3.0",
+    "sass": "^1.92.0",
+    "socket.io": "4.7.5",
+    "socket.io-client": "4.7.5",
+    "uuid": "9.0.1",
+    "zustand": "4.5.2"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/uuid": "^10.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.2",
+    "typescript": "^5"
+  }
+}

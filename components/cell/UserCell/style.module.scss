@@ -1,0 +1,93 @@
+.userCell {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background-color: #1D1D1D;
+    border-radius: 12px;
+    border: 1px solid #ffffff05;
+    transition: .3s;
+
+    &:hover {
+        background-color: #222222;
+    }
+
+    &__left {
+        display: flex;
+        align-items: center;
+
+        &__avatar {
+            position: relative;
+
+            &__admin {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: #FFCC00;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                border: 2px solid #1D1D1D;
+                position: absolute;
+                top: -2px;
+                left: -2px;
+            }
+
+            &__photo {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                margin-right: 8px;
+                background-color: #85858550;
+            }
+        }
+
+        &__info {
+            display: flex;
+            align-items: baseline;
+
+            &__myname {
+                font-size: 16px;
+                font-weight: 500;
+                color: white;
+                width: fit-content;
+                background: none;
+                outline: none;
+                border: none;
+            }
+
+            &__name {
+                font-size: 16px;
+                font-weight: 500;
+                color: white;
+            }
+
+            &__you {
+                font-size: 16px;
+                color: #858585;
+                margin-left: 2px;
+            }
+        }
+    }
+
+    &__right {
+        display: flex;
+        align-items: center;
+
+        &__sync {
+            display: flex;
+            align-items: center;
+            height: 24px;
+            gap: 8px;
+            background-color: #272727;
+            padding: 2px 12px;
+            border-radius: 24px;
+
+            &__time {
+                color: #858585;
+                font-size: 12px;
+            }
+        }
+    }
+}

@@ -1,0 +1,42 @@
+.tabButton {
+    display: flex;
+    align-items: center;
+    height: 40px;
+    padding-inline: 16px;
+    font-size: 18px;
+    font-weight: 500;
+    color: white;
+    background: none;
+    border: none;
+    transition: .3s;
+    border-radius: 8px;
+    cursor: pointer;
+
+    &:hover {
+        background: #EAFF9705;
+    }
+
+    &__counter {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: 600;
+        background-color: #EAFF9725;
+        color: #EAFF97;
+        margin-left: 8px;
+    }
+}
+
+.active {
+    color: #EAFF97;
+}
+
+.disabled {
+    cursor: not-allowed;
+    color: #858585;
+    opacity: .5;
+}
