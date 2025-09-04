@@ -59,9 +59,9 @@ export default function RoomPage() {
   const [vkInput, setVkInput] = useState("");
   const [vkProgress, setVkProgress] = useState(0);
 
-  // Подключение к Socket.IO
+  // --- Подключение Socket.IO ---
   useEffect(() => {
-    const socket: Socket = io({ path: "/api/socket" });
+    const socket: Socket = io(process.env.NEXT_PUBLIC_SOCKET_URL!);
     socketRef.current = socket;
 
     socket.emit("joinRoom", { roomId, nickname: nickname || "Гость", avatar });
@@ -90,7 +90,7 @@ export default function RoomPage() {
     };
   }, [roomId, nickname, avatar]);
 
-  // Установка src видео при смене плейлиста или текущего индекса
+  // --- Обновление src видео ---
   useEffect(() => {
     if (!videoRef.current) return;
     if (!state.playlist || state.currentIndex < 0 || !state.playlist[state.currentIndex]) return;
@@ -105,7 +105,7 @@ export default function RoomPage() {
     }
   }, [state.playlist, state.currentIndex]);
 
-  // Синхронизация видео
+  // --- Синхронизация видео ---
   useEffect(() => {
     if (!videoRef.current) return;
     const video = videoRef.current;
@@ -116,11 +116,10 @@ export default function RoomPage() {
     }
 
     if (state.paused && !video.paused) video.pause();
-    if (!state.paused && video.paused && video.readyState >= 3) {
-      video.play().catch(() => {});
-    }
+    if (!state.paused && video.paused && video.readyState >= 3) video.play().catch(() => {});
   }, [state.time, state.paused]);
 
+  // --- Отправка текущего времени ---
   useEffect(() => {
     const interval = setInterval(() => {
       if (!videoRef.current || !socketRef.current) return;
@@ -144,13 +143,6 @@ export default function RoomPage() {
     const paused = videoRef.current.paused;
 
     socketRef.current?.emit("videoAction", { roomId, action, time: now, paused });
-    socketRef.current?.emit("addActionLog", {
-      roomId,
-      type: action,
-      nickname,
-      time: Date.now(),
-      details: `time=${now.toFixed(2)}s`,
-    });
   };
 
   const onPlay = () => sendVideoAction("play");
@@ -160,7 +152,7 @@ export default function RoomPage() {
     sendVideoAction("seek");
   };
   const onSeeking = () => setLocalSeeking(true);
-  const onEnded = () => socketRef.current?.emit("removeVideo", { roomId, index: state.currentIndex });
+  const onEnded = () => socketRef.current?.emit("nextVideo", { roomId });
 
   const submitProfile = (newNick?: string) => {
     const finalNick = newNick?.trim() || nickInput || "Гость";
@@ -280,17 +272,12 @@ export default function RoomPage() {
             {(!state.playlist || state.playlist.length === 0) && <p>Плейлист пуст</p>}
             <ul>
               {state.playlist.map((url, i) => (
-                <li
-                  key={i}
-                  className={i === state.currentIndex ? styles.activeVideo : ""}
-                >
+                <li key={i} className={i === state.currentIndex ? styles.activeVideo : ""}>
                   <span>{url.split("/").pop()?.substring(0, 30)}</span>
                   {i !== state.currentIndex && (
                     <button
                       className={styles.buttonPlayNext}
-                      onClick={() => {
-                        socketRef.current?.emit("setVideoIndex", { roomId, index: i });
-                      }}
+                      onClick={() => socketRef.current?.emit("setVideoIndex", { roomId, index: i })}
                     >
                       Включить
                     </button>
@@ -304,12 +291,7 @@ export default function RoomPage() {
         {tab === "actions" && (
           <div className={styles.actionsLog}>
             {logs.map((log) => (
-              <ActiveDetailCell
-                key={log.id}
-                time={new Date(log.time).toLocaleTimeString()}
-                name={log.nickname}
-                active={log.details || ""}
-              />
+              <ActiveDetailCell key={log.id} time={new Date(log.time).toLocaleTimeString()} name={log.nickname} active={log.details || ""} />
             ))}
           </div>
         )}
